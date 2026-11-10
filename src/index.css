@@ -1,0 +1,9 @@
+@tailwind base; @tailwind components; @tailwind utilities;
+body { @apply bg-canvas font-sans text-navy antialiased; }
+:focus-visible { outline: 2px solid #5BC41F; outline-offset: 2px; }
+@layer components {
+  .inp { @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-navy; }
+  .th { @apply px-4 py-3 text-start text-xs font-semibold text-slate-400; }
+  .td { @apply px-4 py-3 text-sm; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
