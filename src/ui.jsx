@@ -1,5 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const cx = (...a) => a.filter(Boolean).join(' ')
 const tones = { green: 'bg-lime text-navy', red: 'bg-red-100 text-red-600', gray: 'bg-slate-100 text-slate-500', navy: 'bg-navy text-white', amber: 'bg-amber-100 text-amber-700' }
@@ -24,7 +26,7 @@ export const Field = ({ label, error, children }) => (
     {error && <span className="mt-1 block text-xs text-red-500">{error}</span>}</label>
 )
 export const Chips = ({ items, value, onChange }) => (
-  <div className="flex gap-2">{items.map((i) => (
+  <div className="flex flex-wrap gap-2">{items.map((i) => (
     <button key={i} onClick={() => onChange(i)} className={cx('rounded-full border px-4 py-1 text-xs font-semibold transition', value === i ? 'border-navy bg-navy text-white' : 'border-line bg-white text-slate-500 hover:border-navy')}>{i}</button>))}</div>
 )
 export const Empty = ({ title, text, action }) => (
@@ -48,36 +50,43 @@ export function Modal({ title, sub, onClose, children, footer }) {
   )
 }
 export const Page = ({ title, sub, actions, children }) => (
-  <div className="p-8"><div className="mb-6 flex items-start justify-between gap-4"><div><h1 className="text-2xl font-extrabold">{title}</h1>
+  <div className="p-4 lg:p-8"><div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-extrabold">{title}</h1>
     {sub && <p className="text-xs text-slate-400">{sub}</p>}</div><div className="flex gap-2">{actions}</div></div>{children}</div>
 )
 
+export const Skel = ({ className }) => <div className={cx('animate-pulse rounded-lg bg-slate-200/70', className)} />
+
 const nav = [['/', 'الرئيسية'], ['/lines', 'الخطوط والمحطات'], ['/buses', 'الحافلات'], ['/drivers', 'السائقون'], ['/complaints', 'الشكاوى', 3], ['/reports', 'التقارير المالية']]
 export function Layout() {
-  const go = useNavigate()
+  const go = useNavigate(), [open, setOpen] = useState(false)
   return (
     <div className="flex min-h-screen">
-      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col bg-navy p-4 text-white">
+      {open && <div className="fixed inset-0 z-30 bg-navy/50 lg:hidden" onClick={() => setOpen(false)} />}
+      <aside className={cx('fixed inset-y-0 right-0 z-40 flex w-60 shrink-0 flex-col bg-navy p-4 text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0', open ? 'translate-x-0' : 'translate-x-full')}>
         <div className="mb-8 px-2 pt-2"><div className="text-xl font-extrabold">مساري <span className="text-lime">MASARY</span></div><div className="text-[11px] text-slate-400">لوحة الإدارة</div></div>
         <nav className="flex flex-col gap-1">{nav.map(([to, l, n]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => cx('flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition', isActive ? 'bg-lime text-navy' : 'text-slate-300 hover:bg-navy-800')}>
+          <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)} className={({ isActive }) => cx('flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition', isActive ? 'bg-lime text-navy' : 'text-slate-300 hover:bg-navy-800')}>
             {l}{n && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] text-white">{n}</span>}</NavLink>))}</nav>
         <button onClick={() => go('/login')} className="mt-auto rounded-lg bg-navy-800 p-3 text-start text-xs hover:bg-navy-700">
           <div className="font-bold">مديرية النقل · حمص</div><div className="text-slate-400">تسجيل الخروج</div></button>
       </aside>
-      <main className="min-w-0 flex-1"><Outlet /></main>
+      <main className="min-w-0 flex-1">
+        <div className="flex items-center justify-between bg-navy px-4 py-3 text-white lg:hidden"><b>مساري <span className="text-lime">MASARY</span></b>
+          <button onClick={() => setOpen(true)} aria-label="القائمة" className="text-2xl leading-none">☰</button></div>
+        <Outlet /></main>
     </div>
   )
 }
 
-export function MapView({ className }) {
-  const pts = [[40, 230], [140, 190], [140, 110], [240, 100], [330, 40]]
+const ROUTE = [[34.7180, 36.7000], [34.7250, 36.7060], [34.7300, 36.7150], [34.7350, 36.7200], [34.7420, 36.7260]]
+export function MapView({ className, route = ROUTE, buses = [] }) {
   return (
-    <div className={cx('relative overflow-hidden rounded-xl bg-canvas', className)}>
-      <svg viewBox="0 0 400 270" className="h-full w-full" role="img" aria-label="خريطة حية">
-        <g stroke="#E3E5E0" strokeWidth="10" fill="none"><path d="M0 150H400M0 60H400M90 0V270M250 0V270" /></g>
-        <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke="#7CF03A" strokeWidth="4" strokeLinejoin="round" />
-        {pts.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="6" fill="#0E1F3B" stroke="#fff" strokeWidth="2" />)}
-      </svg></div>
+    <div className={cx('isolate overflow-hidden rounded-xl', className)}>
+      <MapContainer center={route[2]} zoom={14} scrollWheelZoom={false} className="h-full w-full" style={{ minHeight: 260 }}>
+        <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <Polyline positions={route} pathOptions={{ color: '#5BC41F', weight: 5 }} />
+        {route.map((p, i) => <CircleMarker key={i} center={p} radius={6} pathOptions={{ color: '#fff', fillColor: '#0E1F3B', fillOpacity: 1, weight: 2 }} />)}
+        {buses.map((b) => <CircleMarker key={b.id} center={b.pos} radius={10} pathOptions={{ color: '#fff', fillColor: b.on ? '#7CF03A' : '#EF4444', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">{b.id}</Tooltip></CircleMarker>)}
+      </MapContainer></div>
   )
 }

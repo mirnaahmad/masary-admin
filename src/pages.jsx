@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Badge, Btn, Card, Field, Chips, Empty, Table, Modal, Page, MapView } from './ui'
+import { Badge, Btn, Card, Field, Chips, Empty, Table, Modal, Page, MapView, Skel } from './ui'
+import { api, useLoad } from './api'
 import { lines, stops, buses, drivers, complaints, tx, byLine, fmt } from './data'
 
 const Search = ({ v, set, ph }) => <input className="inp max-w-sm bg-white" value={v} onChange={(e) => set(e.target.value)} placeholder={ph} aria-label={ph} />
@@ -24,29 +25,54 @@ export function Login() {
   )
 }
 
-export function Dashboard() {
-  const [open, setOpen] = useState(false), [pick, setPick] = useState(0), [sent, setSent] = useState(false)
-  const stats = [['باصات شغالة', '18 / 24', true], ['ركاب اليوم', '3,420'], ['إيرادات اليوم', '8,550,000'], ['شكاوى جديدة', '3']]
-  const opts = [['باص 31 · احتياطي', 'الموقع: الكراجات · بعد 12 دقيقة'], ['باص 33 · احتياطي', 'الموقع: الإنشاءات · بعد 15 دقيقة'], ['باص 7 · خط الوعر – الساعة', 'أقرب باص متاح حالياً']]
+function ReassignModal({ bus, onClose, onDone }) {
+  const [pick, setPick] = useState(0), [un, setUn] = useState(true), [busy, setBusy] = useState(false)
+  const spare = [['باص 31 · احتياطي', 'الكراجات · بعد 12 دقيقة'], ['باص 22 · من خط عكرمة – الزهراء', 'يترك خطه الحالي']]
+  const confirm = async () => { setBusy(true); await api.reassignBus(bus.id, [31, 22][pick], un); onDone(`تمت إعادة تعيين باص ${bus.id} وتحويل الركاب إلى ${spare[pick][0]}`) }
   return (
-    <Page title="الرئيسية" sub="الأربعاء 4 تشرين الثاني · تحديث مباشر" actions={<Btn variant="ghost">عرض كل الخطوط</Btn>}>
-      {sent && <div className="mb-4 rounded-lg bg-lime px-4 py-3 text-sm font-bold">تم إرسال الباص الإضافي إلى خط الكراجات – الجامعة</div>}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">{stats.map(([l, v, d]) => (
+    <Modal title={`إعادة تعيين: الباص ${bus.id} معطل`} sub={`خط ${bus.line} · ركاب على الخط بانتظار بديل`} onClose={onClose}
+      footer={<><Btn disabled={busy} onClick={confirm}>{busy ? 'جارٍ التأكيد...' : 'تأكيد إعادة التعيين'}</Btn><Btn variant="ghost" onClick={onClose}>إلغاء</Btn></>}>
+      <label className="mb-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={un} onChange={(e) => setUn(e.target.checked)} className="accent-navy" />إلغاء تعيين السائق {bus.driver} من الخط</label>
+      <div className="space-y-2">{spare.map(([t, s2], i) => (
+        <label key={t} className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${pick === i ? 'border-navy bg-lime/30' : 'border-line'}`}>
+          <span><b className="block text-sm">{t}</b><small className="text-slate-500">{s2}</small></span>
+          <input type="radio" name="spare" checked={pick === i} onChange={() => setPick(i)} className="accent-navy" /></label>))}</div>
+      <p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-500">سيصل إشعار للسائق الجديد وللركاب المسجلين على الخط.</p>
+    </Modal>
+  )
+}
+
+export function Dashboard() {
+  const { data, loading, error } = useLoad(api.dashboard)
+  const [open, setOpen] = useState(false), [pick, setPick] = useState(0), [msg, setMsg] = useState(''), [re, setRe] = useState(false), [busy, setBusy] = useState(false)
+  const opts = [['باص 31 · احتياطي', 'الموقع: الكراجات · بعد 12 دقيقة', 31], ['باص 33 · احتياطي', 'الموقع: الإنشاءات · بعد 15 دقيقة', 33], ['باص 7 · خط الوعر – الساعة', 'أقرب باص متاح حالياً', 7]]
+  if (loading) return (
+    <Page title="الرئيسية" sub="جارٍ تحميل مواقع الحافلات...">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <Skel key={i} className="h-24" />)}</div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_340px]"><Skel className="h-96" /><Skel className="h-96" /></div></Page>)
+  if (error) return <Page title="الرئيسية"><Empty title="تعذر تحميل البيانات" text="تحقق من الاتصال بالخادم ثم أعد المحاولة." action={<Btn onClick={() => location.reload()}>إعادة المحاولة</Btn>} /></Page>
+  const send = async () => { setBusy(true); await api.sendExtraBus(5, opts[pick][2]); setBusy(false); setOpen(false); setMsg('تم إرسال الباص الإضافي إلى خط الكراجات – الجامعة') }
+  return (
+    <Page title="الرئيسية" sub="تحديث مباشر" actions={<Link to="/lines"><Btn variant="ghost">عرض كل الخطوط</Btn></Link>}>
+      {msg && <div role="status" className="mb-4 flex justify-between rounded-lg bg-lime px-4 py-3 text-sm font-bold">{msg}<button onClick={() => setMsg('')} aria-label="إغلاق">✕</button></div>}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">{data.stats.map(([l, v, d]) => (
         <div key={l} className={`rounded-xl border p-5 ${d ? 'border-navy bg-navy text-white' : 'border-line bg-white'}`}>
           <div className={`text-xs ${d ? 'text-slate-300' : 'text-slate-400'}`}>{l}</div><div className="mt-1 text-3xl font-extrabold">{v}</div></div>))}</div>
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <Card title="الخريطة الحية"><MapView className="h-80" /></Card>
+        <Card title="الخريطة الحية"><MapView className="h-80" buses={data.buses} /></Card>
         <Card title="التنبيهات"><ul className="space-y-3 text-sm">
           <li className="rounded-lg border border-line p-3"><Badge tone="red">ازدحام</Badge><p className="mt-2 font-semibold">خط الكراجات – الجامعة مغلق بالكامل</p>
             <Btn variant="lime" className="mt-2 w-full" onClick={() => setOpen(true)}>إرسال باص إضافي</Btn></li>
-          <li className="rounded-lg border border-line p-3"><Badge tone="red">معطل</Badge><p className="mt-2">باص 9 معطل · الركاب يحتاجون بديلاً</p></li>
+          <li className="rounded-lg border border-line p-3"><Badge tone="red">معطل</Badge><p className="mt-2">باص 9 معطل · الركاب يحتاجون بديلاً</p>
+            <Btn className="mt-2 w-full" onClick={() => setRe(true)}>إعادة تعيين</Btn></li>
           <li className="rounded-lg border border-line p-3"><Badge tone="navy">شكوى</Badge><p className="mt-2">شكوى خصم مكرر من: رنا الحسن</p></li></ul></Card></div>
       {open && <Modal title="إرسال باص إضافي" sub="خط الكراجات – الجامعة · المقاعد المتاحة قليلة" onClose={() => setOpen(false)}
-        footer={<><Btn onClick={() => { setOpen(false); setSent(true) }}>إرسال الباص</Btn><Btn variant="ghost" onClick={() => setOpen(false)}>إلغاء</Btn></>}>
-        <div className="space-y-2">{opts.map(([t, s], i) => (
-          <label key={t} className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${pick === i ? 'border-navy bg-lime/30' : 'border-line'}`}>
+        footer={<><Btn disabled={busy} onClick={send}>{busy ? 'جارٍ الإرسال...' : 'إرسال الباص'}</Btn><Btn variant="ghost" onClick={() => setOpen(false)}>إلغاء</Btn></>}>
+        <div className="space-y-2">{opts.map(([t, s, id], i) => (
+          <label key={id} className={`flex cursor-pointer items-center justify-between rounded-lg border p-3 ${pick === i ? 'border-navy bg-lime/30' : 'border-line'}`}>
             <span><b className="block text-sm">{t}</b><small className="text-slate-500">{s}</small></span>
             <input type="radio" name="bus" checked={pick === i} onChange={() => setPick(i)} className="accent-navy" /></label>))}</div></Modal>}
+      {re && <ReassignModal bus={buses[1]} onClose={() => setRe(false)} onDone={(m) => { setRe(false); setMsg(m) }} />}
     </Page>
   )
 }
@@ -85,19 +111,35 @@ export function LineEdit() {
 }
 
 export function Buses() {
-  const [q, setQ] = useState(''), [f, setF] = useState('الكل'), [add, setAdd] = useState(false), [plate, setPlate] = useState(''), [list, setList] = useState(buses)
-  const dup = list.some((b) => b.plate === plate)
+  const [q, setQ] = useState(''), [f, setF] = useState('الكل'), [list, setList] = useState(buses), [edit, setEdit] = useState(null), [re, setRe] = useState(null), [msg, setMsg] = useState('')
   const rows = list.filter((b) => (b.plate + b.line).includes(q) && (f === 'الكل' || b.status === f))
+  const save = (b) => { setList((l) => (b.id ? l.map((x) => (x.id === b.id ? b : x)) : [...l, { ...b, id: Math.max(...l.map((x) => x.id)) + 1, driver: '—' }])); setEdit(null) }
   return (
-    <Page title="الحافلات" sub={`${list.length} حافلة · ${list.filter((b) => b.status === 'أونلاين').length} أونلاين`} actions={<Btn onClick={() => setAdd(true)}>+ إضافة حافلة</Btn>}>
-      <div className="mb-4 flex items-center justify-between"><Search v={q} set={setQ} ph="ابحث برقم الباص أو الخط..." /><Chips items={['الكل', 'أونلاين', 'معطل', 'احتياطي']} value={f} onChange={setF} /></div>
-      <Table cols={['رقم', 'اللوحة', 'الخط', 'المقاعد', 'السائق', 'الحالة']} rows={rows}
-        render={(b) => [b.id, `حمص ${b.plate}`, b.line, b.seats, b.driver, <Badge>{b.status}</Badge>]} />
-      {add && <Modal title="إضافة حافلة" sub="اربطها بخط وسائق لاحقاً." onClose={() => setAdd(false)}
-        footer={<><Btn disabled={!plate || dup} onClick={() => { setList([...list, { id: list.length + 40, plate, line: '—', seats: 45, driver: '—', status: 'احتياطي' }]); setPlate(''); setAdd(false) }}>حفظ الحافلة</Btn><Btn variant="ghost" onClick={() => setAdd(false)}>إلغاء</Btn></>}>
-        <div className="space-y-3"><Field label="رقم اللوحة" error={dup && 'رقم اللوحة موجود مسبقاً، تحقق منه أو راجع الحافلة الموجودة'}>
-          <input className={`inp ${dup ? 'border-red-400' : ''}`} value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="412538" /></Field></div></Modal>}
+    <Page title="الحافلات" sub={`${list.length} حافلة · ${list.filter((b) => b.status === 'أونلاين').length} أونلاين`} actions={<Btn onClick={() => setEdit({ plate: '', seats: 45, line: '—', status: 'احتياطي' })}>+ إضافة حافلة</Btn>}>
+      {msg && <div role="status" className="mb-4 rounded-lg bg-lime px-4 py-3 text-sm font-bold">{msg}</div>}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><Search v={q} set={setQ} ph="ابحث برقم الباص أو الخط..." /><Chips items={['الكل', 'أونلاين', 'معطل', 'احتياطي']} value={f} onChange={setF} /></div>
+      {rows.length ? <Table cols={['رقم', 'اللوحة', 'الخط', 'المقاعد', 'السائق', 'الحالة', '']} rows={rows}
+        render={(b) => [b.id, `حمص ${b.plate}`, b.line, b.seats, b.driver, <Badge>{b.status}</Badge>,
+          <span className="flex gap-3"><button className="font-semibold hover:underline" onClick={() => setEdit(b)}>تعديل</button>
+            {b.status === 'معطل' && <button className="font-semibold text-red-600 hover:underline" onClick={() => setRe(b)}>إعادة تعيين</button>}</span>]} />
+        : <div className="rounded-xl border border-line bg-white"><Empty title="لا نتائج" text="جرّب تغيير كلمة البحث أو الفلتر." /></div>}
+      {edit && <BusForm bus={edit} list={list} onSave={save} onClose={() => setEdit(null)} />}
+      {re && <ReassignModal bus={re} onClose={() => setRe(null)} onDone={(m) => { setRe(null); setMsg(m) }} />}
     </Page>
+  )
+}
+
+function BusForm({ bus, list, onSave, onClose }) {
+  const [b, setB] = useState(bus), set = (k) => (e) => setB({ ...b, [k]: k === 'seats' ? +e.target.value : e.target.value })
+  const dup = list.some((x) => x.plate === b.plate && x.id !== b.id)
+  return (
+    <Modal title={b.id ? `تعديل الحافلة ${b.id}` : 'إضافة حافلة'} sub="يمكن ربط السائق من صفحة السائقين." onClose={onClose}
+      footer={<><Btn disabled={!b.plate || dup} onClick={() => onSave(b)}>حفظ الحافلة</Btn><Btn variant="ghost" onClick={onClose}>إلغاء</Btn></>}>
+      <div className="space-y-3">
+        <Field label="رقم اللوحة" error={dup && 'رقم اللوحة موجود مسبقاً، تحقق منه أو راجع الحافلة الموجودة'}><input className={`inp ${dup ? 'border-red-400' : ''}`} value={b.plate} onChange={set('plate')} placeholder="412538" /></Field>
+        <div className="grid grid-cols-2 gap-3"><Field label="عدد المقاعد"><input type="number" min="10" className="inp" value={b.seats} onChange={set('seats')} /></Field>
+          <Field label="الحالة"><select className="inp" value={b.status} onChange={set('status')}>{['أونلاين', 'معطل', 'احتياطي'].map((s) => <option key={s}>{s}</option>)}</select></Field></div>
+        <Field label="الخط"><select className="inp" value={b.line} onChange={set('line')}><option>—</option>{lines.map((l) => <option key={l.id}>{l.name}</option>)}</select></Field></div></Modal>
   )
 }
 
