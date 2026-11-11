@@ -1,6 +1,16 @@
-import { Routes, Route } from 'react-router-dom'
-import { Layout } from './ui'
-import { Login, Dashboard, Lines, LineEdit, Buses, Drivers, DriverNew, Complaints, ComplaintDetail, Reports } from './pages'
+// src/App.jsx
+import { Routes, Route } from "react-router-dom";
+import { Layout } from "./components/ui";
+import { Login } from "./pages/Login";
+import { Dashboard } from "./pages/Dashboard";
+import { Lines } from "./pages/Lines";
+import { LineEdit } from "./pages/LineEdit";
+import { Buses } from "./pages/Buses";
+import { Drivers } from "./pages/Drivers";
+import { DriverNew } from "./pages/DriverNew";
+import { Complaints } from "./pages/Complaints";
+import { ComplaintDetail } from "./pages/ComplaintDetail";
+import { Reports } from "./pages/Reports";
 
 export default function App() {
   return (
@@ -18,5 +28,5 @@ export default function App() {
         <Route path="reports" element={<Reports />} />
       </Route>
     </Routes>
-  )
+  );
 }
