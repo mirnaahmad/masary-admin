@@ -155,26 +155,28 @@ export function Dashboard() {
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {data.stats.map(([l, v, d], index) => {
+        {data.stats.map(([l, v], index) => {
           const handleCardClick = () => {
-            if (index === 1) go("/reports");
+            if (index === 1)
+              go("/reports"); // ركاب اليوم -> التقارير المالية
             else if (index === 2)
               go("/reports"); // إيرادات اليوم -> التقارير المالية
-            else if (index === 3) go("/complaints");
-            else go("/buses");
+            else if (index === 3)
+              go("/complaints"); // شكاوى جديدة -> الشكاوى
+            else go("/buses"); // الباصات الشغالة -> الحافلات
           };
           return (
             <div
               key={l}
               onClick={handleCardClick}
-              className={`cursor-pointer rounded-xl border p-5 transition hover:scale-[1.02] ${d ? "border-navy bg-navy text-white" : "border-line bg-white"}`}
+              className="cursor-pointer rounded-xl border border-lime/50 bg-white p-5 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.06)] ring-1 ring-lime/20 transition-all duration-200 hover:scale-[1.02] hover:bg-navy hover:text-white hover:shadow-lg group"
             >
-              <div
-                className={`text-xs ${d ? "text-slate-300" : "text-slate-400"}`}
-              >
+              <div className="text-xs font-medium text-slate-500 group-hover:text-slate-300">
                 {l}
               </div>
-              <div className="mt-1 text-3xl font-extrabold">{v}</div>
+              <div className="mt-1 text-3xl font-extrabold text-navy group-hover:text-white">
+                {v}
+              </div>
             </div>
           );
         })}
