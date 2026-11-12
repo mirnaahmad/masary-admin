@@ -1,6 +1,7 @@
 // src/components/ui.jsx
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { tempComplaints } from "../data";
 
 const cx = (...a) => a.filter(Boolean).join(" ");
 const tones = {
@@ -179,8 +180,24 @@ const nav = [
   ["/reports", "التقارير المالية"],
 ];
 export function Layout() {
-  const go = useNavigate(),
-    [open, setOpen] = useState(false);
+  const go = useNavigate();
+  useLocation(); // يضمن تحديث العداد في القائمة الجانبية عند التنقل بين الصفحات
+  const [open, setOpen] = useState(false);
+
+  // حساب عدد الشكاوى قيد الانتظار بشكل حقيقي وديناميكي
+  const pendingComplaints = tempComplaints.filter(
+    (c) => c.status === "قيد الانتظار",
+  ).length;
+
+  const nav = [
+    ["/", "الرئيسية"],
+    ["/lines", "الخطوط والمحطات"],
+    ["/buses", "الحافلات"],
+    ["/drivers", "السائقون"],
+    ["/complaints", "الشكاوى", pendingComplaints],
+    ["/reports", "التقارير المالية"],
+  ];
+
   return (
     <div className="flex min-h-screen">
       {open && (
@@ -218,7 +235,7 @@ export function Layout() {
               }
             >
               {l}
-              {n && (
+              {n > 0 && (
                 <span className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1 text-[10px] text-white">
                   {n}
                 </span>
