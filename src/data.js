@@ -142,38 +142,77 @@ export const complaints = [
     status: "مغلقة",
   },
 ];
+// export const tx = [
+//   {
+//     id: "TX-88214",
+//     who: "رنا الحسن",
+//     line: "الكراجات – الجامعة",
+//     amount: 2500,
+//     time: "10:02",
+//     ok: true,
+//   },
+//   {
+//     id: "TX-88231",
+//     who: "سامر يوسف",
+//     line: "الوعر – ساحة الساعة",
+//     amount: 2500,
+//     time: "9:58",
+//     ok: true,
+//   },
+//   {
+//     id: "TX-88230",
+//     who: "ليل منصور",
+//     line: "المركز – الإنشاءات",
+//     amount: 5000,
+//     time: "9:57",
+//     ok: true,
+//   },
+//   {
+//     id: "TX-88229",
+//     who: "أحمد غانم",
+//     line: "الوعر – ساحة الساعة",
+//     amount: 2500,
+//     time: "9:55",
+//     ok: true,
+//   },
+// ];
+// في ملف src/data.js
 export const tx = [
   {
-    id: "TX-88214",
+    id: "TX-882",
     who: "رنا الحسن",
     line: "الكراجات – الجامعة",
-    amount: 2500,
-    time: "10:02",
-    ok: true,
+    amount: 1500,
+    time: "اليوم 9:40",
+    rawDate: "2026-11-12",
+    status: "ناجحة",
   },
   {
-    id: "TX-88231",
-    who: "سامر يوسف",
-    line: "الوعر – ساحة الساعة",
-    amount: 2500,
-    time: "9:58",
-    ok: true,
+    id: "TX-883",
+    who: "أحمد المحمد",
+    line: "عكرمة – الزهراء",
+    amount: 2000,
+    time: "اليوم 10:15",
+    rawDate: "2026-11-12",
+    status: "معلقة",
   },
   {
-    id: "TX-88230",
-    who: "ليل منصور",
-    line: "المركز – الإنشاءات",
-    amount: 5000,
-    time: "9:57",
-    ok: true,
+    id: "TX-884",
+    who: "سارة علي",
+    line: "المهاجرين – الحضارة",
+    amount: 1500,
+    time: "أمس 14:20",
+    rawDate: "2026-11-11",
+    status: "مرفوضة",
   },
   {
-    id: "TX-88229",
-    who: "أحمد غانم",
-    line: "الوعر – ساحة الساعة",
-    amount: 2500,
-    time: "9:55",
-    ok: true,
+    id: "TX-885",
+    who: "محمد خالد",
+    line: "الكراجات – الجامعة",
+    amount: 1500,
+    time: "أمس 08:30",
+    rawDate: "2026-11-11",
+    status: "مسترجعة", // تم رد المبلغ بسبب شكوى خصم مكرر
   },
 ];
 export const byLine = [
@@ -212,4 +251,22 @@ export let tempDrivers = drivers.map((d, idx) => ({
 
 export const setTempDrivers = (newList) => {
   tempDrivers = newList;
+};
+
+export let tempComplaints = complaints.map((c) => ({
+  ...c,
+  description:
+    c.description ||
+    (c.cat === "مالية"
+      ? "تم خصم أجرة الرحلة مرتين من رصيد المحفظة أثناء الصعود للحافلة."
+      : "تأخر وصول الحافلة عن الموعد المحدد على المحطة لفترة طويلة."),
+  driver: c.driver || "خالد العلي",
+  bus: c.bus || "باص 17",
+  line: c.line || "خط 5",
+  resolutionNote: c.resolutionNote || "",
+  decision: c.decision || "",
+}));
+
+export const setTempComplaints = (newList) => {
+  tempComplaints = newList;
 };
